@@ -620,6 +620,9 @@ with tab3:
                     customdata=customdata,
                 )
             )
+
+            fig.update_traces(marker=dict(cornerradius=5))
+
             fig.update_layout(
                 title="Países fornecedores (2023):",
                 margin=dict(l=0, r=0, t=40, b=0),
