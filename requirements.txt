@@ -1,0 +1,15 @@
+loguru
+mkdocs
+python-dotenv
+ruff
+tqdm
+typer
+-e .
+streamlit
+polars
+pandas
+plotly
+numpy
+scikit-learn
+fastexcel
+psutil

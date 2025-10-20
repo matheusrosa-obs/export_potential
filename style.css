@@ -1,0 +1,15 @@
+.main,
+.block-container {
+    max-width: 70vw;
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+
+@media (max-width: 768px) {
+    .main,
+    .block-container {
+        max-width: 120vw;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}
