@@ -1,13 +1,3 @@
-"""
-Reprodução das visualizações do app Streamlit em um script para uso no Jupyter.
-
-Como usar no Jupyter:
-- %run ./app/apresent.py  -> renderiza todos os gráficos com seleções padrão
-- Ou importe funções/figuras e edite as variáveis de seleção no topo deste arquivo.
-
-Este script evita dependências do Streamlit e reproduz os gráficos com máxima fidelidade.
-"""
-
 from pathlib import Path
 from itertools import cycle
 import numpy as np
@@ -32,21 +22,13 @@ except Exception:
 # -----------------------------------------------------------------------------
 # Paths e carregamento de dados (espelha o app/app.py)
 # -----------------------------------------------------------------------------
-def get_project_root() -> Path:
-    current = Path(__file__).resolve()
-    for parent in current.parents:
-        if (parent / 'app' / 'app.py').exists():
-            return parent
-    return Path.cwd()
+try:
+    app = Path(__file__).parent
+except NameError:
+    app = Path.cwd()
 
-
-PROJECT_ROOT = get_project_root()
-APP_DIR = PROJECT_ROOT / 'app'
-DATA_RAW = PROJECT_ROOT / 'data' / 'raw'
-DATA_PROCESSED = PROJECT_ROOT / 'data' / 'processed'
-DATA_INTERIM = PROJECT_ROOT / 'data' / 'interim'
-REFERENCES = PROJECT_ROOT / 'references'
-
+project_root = app.parent
+references = app / 'references'
 
 def format_contabil(value: float) -> str:
     if value is None:
@@ -70,31 +52,30 @@ def format_decimal(value, decimals: int = 1) -> str:
     except Exception:
         return ""
 
-
 def load_data():
     # EPI scores SH6
-    df_epi_sh6 = pl.read_parquet(APP_DIR / 'data' / 'epi_scores_sh6.parquet')
+    df_epi_sh6 = pl.read_parquet(app / 'data' / 'epi_scores_sh6.parquet')
     df_epi_sh6 = df_epi_sh6.with_columns(pl.col("epi_score_normalized").round(3))
 
     # EPI scores countries
-    df_epi_countries = pl.read_parquet(APP_DIR / 'data' / 'epi_scores_countries.parquet')
+    df_epi_countries = pl.read_parquet(app / 'data' / 'epi_scores_countries.parquet')
     df_epi_countries = df_epi_countries.with_columns(pl.col("epi_score_normalized").round(3))
 
     # EPI scores detalhado
-    df_epi = pl.read_parquet(APP_DIR / 'data' / 'epi_scores.parquet')
+    df_epi = pl.read_parquet(app / 'data' / 'epi_scores_processed.parquet')
     df_epi = df_epi.with_columns(pl.col("epi_score_normalized").round(3))
 
     # EPI por setores SC Competitiva
-    df_epi_sc_comp = pl.read_parquet(APP_DIR / 'data' / 'epi_scores_sc_comp.parquet')
+    df_epi_sc_comp = pl.read_parquet(app / 'data' / 'epi_scores_sc_comp.parquet')
     df_epi_sc_comp = df_epi_sc_comp.with_columns(pl.col("epi_score_normalized").round(3))
 
     # Mercados mundiais (para tabela e info)
-    df_markets = pl.read_parquet(APP_DIR / 'data' / 'app_dataset.parquet')
+    df_markets = pl.read_parquet(app / 'data' / 'app_dataset_processed.parquet')
     df_markets = df_markets.select([
         pl.col('importer'),
-        pl.col('country_name').alias('importer_name'),
+        pl.col('importer_name').alias('importer_name'),
         pl.col('sh6'),
-        pl.col('description').alias('product_description_br'),
+        pl.col('product_description_br').alias('product_description_br'),
         pl.col('value'),
         pl.col('market_share'),
         pl.col('cagr_5y'),
@@ -111,7 +92,7 @@ def load_data():
     )
 
     # Competidores (fornecedores)
-    df_competitors = pl.read_parquet(APP_DIR / 'data' / 'df_competitors.parquet')
+    df_competitors = pl.read_parquet(app / 'data' / 'df_competitors.parquet')
 
     # Ajustes decimais em texto como no app
     df_markets = df_markets.with_columns(
@@ -123,14 +104,13 @@ def load_data():
 
     return df_epi_sh6, df_epi_countries, df_epi, df_epi_sc_comp, df_markets, df_competitors
 
-
 # -----------------------------------------------------------------------------
 # Seleções padrão para reprodução dos gráficos interativos do app
 # Edite estas variáveis conforme necessidade no Jupyter.
 # -----------------------------------------------------------------------------
-SELECTED_SH6: str | None = "940360 - Outros móveis de madeira"  # Ex.: "010121 - Cavalos reprodutores de raça pura"
-SUP_COUNTRY: str | None = "940360 - Outros móveis de madeira"   # Nome do país fornecedor
-SUP_SH6: str | None = None       # Produto (sh6_product)
+SELECTED_SH6: str | None = "440711 - Madeira serrada ou fendida longitudinalmente, cortada transversalmente ou desenrolada, mesmo aplainada, lixada ou unida pelas extremidades, de espessura superior a 6 mm, de pinheiro (Pinus spp.)"  # Ex.: "010121 - Cavalos reprodutores de raça pura"
+SUP_COUNTRY: str | None = "Índia"   # Nome do país fornecedor
+SUP_SH6: str | None = "440711 - Madeira serrada ou fendida longitudinalmente, cortada transversalmente ou desenrolada, mesmo aplainada, lixada ou unida pelas extremidades, de espessura superior a 6 mm, de pinheiro (Pinus spp.)"       # Produto (sh6_product)
 
 # -----------------------------------------------------------------------------
 # Construção de gráficos (espelha o app)
@@ -409,7 +389,7 @@ def build_suppliers_treemap(df_competitors: pl.DataFrame, df_epi_sh6: pl.DataFra
             values=values,
             branchvalues="total",
             marker=dict(colors=node_colors, line=dict(width=0.5, color="rgba(255,255,255,0.15)")),
-            tiling=dict(pad=2),
+            tiling=dict(pad=2, squarifyratio=1),  # squarifyratio=1 deixa o treemap mais quadrado
             textinfo="label+value",
             texttemplate="%{label}<br>%{value:.2s}",
             hovertemplate="<br>".join([
@@ -420,9 +400,16 @@ def build_suppliers_treemap(df_competitors: pl.DataFrame, df_epi_sh6: pl.DataFra
                 "<extra></extra>",
             ]),
             customdata=customdata,
+            textfont=dict(size=24),  # aumenta a fonte dos rótulos
         )
     )
-    fig.update_layout(title="Países fornecedores (2023):", margin=dict(l=0, r=0, t=40, b=0))
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=0, b=0),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        width=900,   # largura menor
+        height=900   # altura igual à largura para formato quadrado
+    )
     return fig
 
 
@@ -505,7 +492,7 @@ if __name__ == "__main__":
         # Exporta a tabela usada no gráfico para .xlsx
         df_selected = df_epi.filter(pl.col("sh6_product") == SELECTED_SH6).sort("epi_score_normalized", descending=True)
         df_selected_pd = df_selected.to_pandas().head(25).sort_values("epi_score_normalized", ascending=True)
-        output_path = PROJECT_ROOT / "tabela_epi_barras.xlsx"
+        output_path = app / "tabela_epi_barras.xlsx"
         df_selected_pd.to_excel(output_path, index=False)
         print(f"Tabela exportada para: {output_path}")
 
@@ -540,3 +527,5 @@ if __name__ == "__main__":
         fig_imports_geo.show()
 
     print("\nDica: edite SELECTED_SH6, SUP_COUNTRY e SUP_SH6 no topo deste arquivo para refinar as figuras.")
+    
+    df_markets.filter(pl.col("sh6_product") == SUP_SH6).write_excel('market_data.xlsx')
